@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tecnología en sus manos · Chat</title>
+<style>
+  :root{
+    --verde:#008069; --verde-osc:#075e54; --burbuja-yo:#d9fdd3; --burbuja-el:#ffffff;
+    --fondo:#efeae2; --texto:#111b21; --gris:#667781; --borde:#e9edef;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:Segoe UI,Helvetica,Arial,sans-serif;background:#d1d7db;display:flex;justify-content:center;align-items:center;color:var(--texto)}
+  .telefono{width:100%;max-width:430px;height:100%;max-height:860px;display:flex;flex-direction:column;background:var(--fondo);box-shadow:0 10px 40px rgba(0,0,0,.25);overflow:hidden}
+  @media(min-width:500px){.telefono{height:92vh;border-radius:22px}}
+  header{background:var(--verde);color:#fff;display:flex;align-items:center;gap:12px;padding:10px 14px}
+  .avatar{width:42px;height:42px;border-radius:50%;background:#fff;color:var(--verde);display:grid;place-items:center;font-weight:700;font-size:15px;flex-shrink:0}
+  .info b{display:block;font-size:16px}
+  .info span{font-size:12.5px;opacity:.85}
+  #chat{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:6px;
+    background-image:radial-gradient(rgba(0,0,0,.035) 1px,transparent 1px);background-size:18px 18px}
+  .aviso{align-self:center;background:#ffeecd;color:#54656f;font-size:12px;padding:6px 12px;border-radius:8px;text-align:center;max-width:90%;margin-bottom:6px}
+  .msg{max-width:82%;padding:7px 10px 18px;border-radius:8px;font-size:14.5px;line-height:1.38;position:relative;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px .5px rgba(0,0,0,.13)}
+  .msg.el{background:var(--burbuja-el);align-self:flex-start;border-top-left-radius:0}
+  .msg.yo{background:var(--burbuja-yo);align-self:flex-end;border-top-right-radius:0}
+  .hora{position:absolute;right:8px;bottom:3px;font-size:11px;color:var(--gris)}
+  .msg.yo .hora::after{content:" ✓✓";color:#53bdeb}
+  .escribiendo{align-self:flex-start;background:#fff;padding:10px 14px;border-radius:8px;border-top-left-radius:0;display:none;gap:4px}
+  .escribiendo i{width:7px;height:7px;background:#8696a0;border-radius:50%;display:inline-block;animation:b 1.2s infinite}
+  .escribiendo i:nth-child(2){animation-delay:.2s}.escribiendo i:nth-child(3){animation-delay:.4s}
+  @keyframes b{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+  .rapidas{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 8px}
+  .rapidas button{border:1px solid var(--verde);background:#fff;color:var(--verde);border-radius:16px;padding:6px 11px;font-size:13px;cursor:pointer}
+  form{display:flex;gap:8px;padding:8px 10px;background:#f0f2f5;align-items:center}
+  input{flex:1;border:none;border-radius:22px;padding:11px 16px;font-size:15px;outline:none;background:#fff}
+  .enviar{width:44px;height:44px;border-radius:50%;border:none;background:var(--verde);color:#fff;cursor:pointer;display:grid;place-items:center;flex-shrink:0}
+  .enviar:disabled{opacity:.5}
+  .enviar svg{width:20px;height:20px;fill:#fff}
+</style>
+</head>
+<body>
+<div class="telefono">
+  <header>
+    <div class="avatar">TM</div>
+    <div class="info"><b>Tecnología en sus manos</b><span id="estado">en línea</span></div>
+  </header>
+
+  <div id="chat">
+    <div class="aviso">🔒 Demo de atención automática con IA. Escribe como si fueras un cliente.</div>
+    <div class="escribiendo" id="escribiendo"><i></i><i></i><i></i></div>
+  </div>
+
+  <div class="rapidas" id="rapidas">
+    <button>Quiero instalar cámaras en mi casa</button>
+    <button>¿Cuánto vale una alarma?</button>
+    <button>¿Hablo con una persona?</button>
+  </div>
+
+  <form id="form">
+    <input id="txt" placeholder="Escribe un mensaje" autocomplete="off">
+    <button class="enviar" id="btn" aria-label="Enviar"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+  </form>
+</div>
+
+<script>
+  const chat = document.getElementById("chat");
+  const typing = document.getElementById("escribiendo");
+  const form = document.getElementById("form");
+  const txt = document.getElementById("txt");
+  const btn = document.getElementById("btn");
+  const estado = document.getElementById("estado");
+  const history = [];
+
+  function hora(){ return new Date().toLocaleTimeString("es-CO",{hour:"numeric",minute:"2-digit"}); }
+
+  function pintar(texto, quien){
+    const d = document.createElement("div");
+    d.className = "msg " + quien;
+    d.textContent = texto;
+    const h = document.createElement("span"); h.className="hora"; h.textContent=hora();
+    d.appendChild(h);
+    chat.insertBefore(d, typing);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  async function enviar(texto){
+    texto = texto.trim(); if(!texto) return;
+    document.getElementById("rapidas").style.display="none";
+    pintar(texto,"yo"); history.push({role:"user",text:texto});
+    txt.value=""; btn.disabled=true;
+    typing.style.display="flex"; estado.textContent="escribiendo..."; chat.scrollTop=chat.scrollHeight;
+    try{
+      const r = await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({history})});
+      const data = await r.json();
+      const reply = data.reply || data.error || "Ups, algo falló.";
+      await new Promise(ok=>setTimeout(ok, 500 + Math.min(reply.length*12, 1500)));
+      typing.style.display="none";
+      pintar(reply,"el"); if(data.reply) history.push({role:"model",text:reply});
+    }catch(e){
+      typing.style.display="none"; pintar("No hay conexión. Intenta de nuevo.","el");
+    }
+    estado.textContent="en línea"; btn.disabled=false; txt.focus();
+  }
+
+  form.addEventListener("submit",e=>{e.preventDefault(); enviar(txt.value);});
+  document.querySelectorAll(".rapidas button").forEach(b=>b.onclick=()=>enviar(b.textContent));
+
+  // Saludo inicial
+  setTimeout(()=>{
+    const h = new Date().getHours();
+    const s = h<12?"Buenos días":h<19?"Buenas tardes":"Buenas noches";
+    const saludo = `${s}, sí, habla con el equipo de Javier Bedoya 👋 ¿En qué te puedo servir?`;
+    pintar(saludo,"el"); history.push({role:"model",text:saludo});
+  },400);
+</script>
+</body>
+</html>

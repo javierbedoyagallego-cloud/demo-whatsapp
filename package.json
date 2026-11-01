@@ -1,0 +1,7 @@
+{
+  "name": "demo-whatsapp-tecnologia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demo de agente de atención por WhatsApp para Tecnología en sus manos",
+  "engines": { "node": ">=18" }
+}
